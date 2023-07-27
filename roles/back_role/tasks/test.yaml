@@ -1,0 +1,180 @@
+- name: Make sure the remote app exists
+  file:
+    path: "{{ app_root_dir }}"
+    state: directory
+    mode: 0755
+    owner: "{{remote_user}}"
+    group: "{{remote_user}}"
+
+- name: Check if backend exists
+  ansible.builtin.stat:
+    path: "/home/{{ remote_user }}/backend"
+  register: res
+
+- name: Copy file with owner and permission, using symbolic representation
+  ansible.builtin.copy:
+    src: backend
+    dest: "/home/{{ remote_user }}"
+    owner: "{{ remote_user }}"
+  when: not res.stat.exists
+
+# - name: Rsync application file to the remote server
+#   become: true
+#   synchronize:
+#       src: back
+#       dest: /home/{{ remote_user }}
+#       use_ssh_args: yes
+#       rsync_path: "sudo -u {{ remote_user }} rsync"
+
+# - name: Set up additional permissions
+#   acl:
+#     path: "{{ app_root_dir }}/storage/"
+#     entry: group:www-data:rwX
+#     recursive: yes
+#     state: present
+
+- name: Set up .env file
+  template:
+    src: laravel-env.j2
+    dest: "{{ app_root_dir }}/.env"
+
+# Install PHP
+
+- name: Install PHP packages
+  become: true
+  apt:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - php7.4-cli
+    - php7.4-curl
+    - php7.4-fpm
+    - php7.4-intl
+    - php7.4-mysql
+    - php-mbstring
+    - php-xml
+
+#Install composer
+
+- name: Download Composer Installation Script
+  get_url:
+    url: https://getcomposer.org/installer
+    dest: /tmp/composer-setup.php
+
+- name: Run Composer Installer
+  command:
+    cmd: /usr/bin/php /tmp/composer-setup.php
+    creates: composer.phar
+
+- name: Copy Composer Executable to /usr/local/bin
+  become: true
+  copy:
+    src: composer.phar
+    dest: /usr/local/bin/composer
+    remote_src: yes
+    mode: "0755"
+
+- name: Remove phar
+  file:
+    path: composer.phar
+    state: absent
+
+- name: Remove Install Script
+  file:
+    path: /tmp/composer-setup.php
+    state: absent
+
+# Execute composer commands
+
+- name: Update dependencies with composer
+  become: false
+  composer:
+    command: update
+    working_dir: "{{ app_root_dir }}"
+  tags: ["composer:install"]
+
+- name: Install dependencies with composer
+  become: false
+  composer:
+    command: install
+    working_dir: "{{ app_root_dir }}"
+  tags: ["composer:install"]
+
+- name: Generate app key
+  command: php {{ app_root_dir }}/artisan key:generate
+  tags: ["laravel", "artisan:key"]
+
+- name: Set up app storage link
+  command: "/usr/bin/php {{ app_root_dir }}/artisan storage:link"
+  tags: ["laravel", "artisan:storage"]
+
+- name: Run Migrations + Seeders
+  command: "/usr/bin/php {{ app_root_dir }}/artisan migrate --seed"
+  tags: ["laravel", "artisan:migrate"]
+
+- name: Install wget
+  become: true
+  ansible.builtin.apt:
+    name: "wget"
+    state: present
+
+- name: Check if nvm installer exists
+  ansible.builtin.stat:
+    path: ~/install.sh
+  register: res
+
+- name: Download nvm
+  ansible.builtin.command:
+    cmd: wget https://raw.githubusercontent.com/creationix/nvm/master/install.sh
+    chdir: "{{ remote_front_dir }}"
+  when: not res.stat.exists
+
+- name: Install nvm
+  ansible.builtin.shell:
+    cmd: bash install.sh
+    chdir: "{{ remote_front_dir }}"
+    executable: /bin/bash
+
+- name: Check if nvm installer exists
+  ansible.builtin.stat:
+    path: ~/install.sh
+  register: res
+
+- name: Delete nvm installer
+  ansible.builtin.shell:
+    cmd: rm install.sh
+    chdir: "{{ remote_front_dir }}"
+    executable: /bin/bash
+  when: res.stat.exists
+
+- name: Mise à jour ~/.bashrc
+  ansible.builtin.shell:
+    cmd: source ~/.nvm/nvm.sh && nvm install 12.22.12 && nvm use 12.22.12
+    executable: /bin/bash
+
+- name: Install npm
+  become: true
+  ansible.builtin.apt:
+    name: "npm"
+    state: present
+
+- name: Install pm2
+  become: true
+  ansible.builtin.command:
+    cmd: npm install -g  pm2
+    chdir: "{{ remote_front_dir }}"
+
+- name: Run project
+  become: true
+  ansible.builtin.command:
+    cmd: pm2 start "/usr/bin/php {{ app_root_dir }}/artisan serve --host 0.0.0.0 --port 8000"
+  tags:
+    ["laravel", "artisan:serve"]
+
+    # chdir: "{{ remote_front_dir }}"
+# Serve apllication
+
+# - name: Serve application
+#   ansible.builtin.command:
+#     cmd: /usr/bin/php {{ app_root_dir }}/artisan serve --host 0.0.0.0 --port 8000
+#   tags: ["laravel", "artisan:serve"]

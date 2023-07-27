@@ -1,0 +1,31 @@
+- name: Install node
+  become: true
+  ansible.builtin.apt:
+    name: "nodejs"
+    state: present
+
+- name: Install npm
+  become: true
+  ansible.builtin.apt:
+    name: "npm"
+    state: present
+
+- name: Copy the project
+  ansible.builtin.copy:
+    src: "{{ local_front_location }}"
+    dest: "{{ remote_front_location }}"
+
+- name: Install angular and dependencies
+  ansible.builtin.command:
+    cmd: npm install @angular/cli
+    chdir: "{{ remote_front_dir }}"
+
+- name: Compile the project
+  ansible.builtin.command:
+    cmd: npm run build:prod
+    chdir: "{{ remote_front_dir }}"
+
+- name: Run project
+  ansible.builtin.command:
+    cmd: npm start 
+    chdir: "{{ artifact_dir }}"

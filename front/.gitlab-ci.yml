@@ -1,0 +1,84 @@
+#This file is a template, and might need editing before it works on your project.
+# This is a sample GitLab CI/CD configuration file that should run without any modifications.
+# It demonstrates a basic 3 stage CI/CD pipeline. Instead of real tests or scripts,
+# it uses echo commands to simulate the pipeline execution.
+#
+# A pipeline is composed of independent jobs that run scripts, grouped into stages.
+# Stages run in sequential order, but jobs within stages run in parallel.
+#
+# For more information, see: https://docs.gitlab.com/ee/ci/yaml/index.html#stages
+#
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
+
+image: debian:11
+
+stages:
+  - build
+  - test
+  - deploy
+
+before_script:
+  - apt update
+  - apt upgrade -y
+  - apt install chromium -y
+  - apt install curl -y
+  - export CHROME_BIN=/usr/bin/chromium
+  - curl -sL https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.0/install.sh -o install_nvm.sh
+  - bash install_nvm.sh 
+  - export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use
+  - nvm install 12.22.12
+  - nvm use 12.22.12
+  - apt install npm -y
+  - npm install @angular/cli
+  - npm install
+
+test:
+  stage: test
+  script:
+    - npm run test --quiet
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules
+    policy: pull
+
+build_image:
+  stage: build
+  script:
+    - npm run build:prod
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/dist
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules
+    policy: pull
+
+deploy:
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - touch ~/.ssh/id_rsa
+    - cp "$ABDOU_KEY" ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host *\nStrictHostKeyChecking no\n" > ~/.ssh/config
+    - eval $(ssh-agent -s)
+    - ssh-add ~/.ssh/id_rsa
+  stage: deploy
+  script:
+    - apt install -y ansible 
+    - cd $CI_PROJECT_DIR/front_deploy
+    - ls ~/.ssh
+    - ansible-playbook --vault-id $VAULT -i inventory.yml playbook.yml  --extra-vars "dist=$CI_PROJECT_DIR/dist/"

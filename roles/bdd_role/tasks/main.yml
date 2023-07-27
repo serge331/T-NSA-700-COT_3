@@ -1,0 +1,4 @@
+---
+# tasks file for mesroles
+- name: Install emacs-nox
+  import_tasks: update.yml

@@ -1,0 +1,24 @@
+---
+# vars file for base
+ssh_pub_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCrNgBnSeGFXTOiBUW24kyRmpa+GD+B9XrvWCgtiMKz7tCMai7Ju4f0oIr5UM0IG+GcylIZZu+dP4yezjaPTsEtQR9JHrBCBC0Vsq+ma+gd9eSl8fAEfzpFyHXt1Nkb3sveiyK4+F8ueWKoxjo2GRZecshoSkM6ouaq7xYdE9QhE9Wrf/6r8B9k+TQR74TFxX5nF6I+psUXND5Gzw1wKl4xn4vlHw60bPwSgP/ie1zn4ShdK5ee8UOCVThVVx45QkJTHOdOxykn4Tw+nnXcHLw1iiub+WxCaewqSVv9HJKLTowhSNJCmm4yXEZZPpvvWhzIV7QkIcorJ+IksjO358+fKcZCXjYG2SEt+qd76TWLWf/hfragTEjVe4WZ64QiI/qBk16NQKYNNC6F/JL9+/OgwYAzJ5nUqxLXwQz/7/uzXUYxIEZzB2x1jPiY6KoOzdILuZqIJGDJru+ouiE71Knjas3YCsQJoojzIPUTVbBYDhAYEwwU7l5zHn4ZC3L3Tg8= pepita@MacBook-Pro-de-Damia.local
+username: steph
+
+#Db data
+remote_user: steph
+mysql_root_password: "rootpass"
+mysql_app_db: mydb
+mysql_app_user: mysql
+mysql_app_pass: mysql
+app_name: backend
+app_debug: true
+app_url: 20.122.107.7
+db_host: 23.102.113.129
+db_port: 3306
+db_database: "{{ mysql_app_db }}"
+db_user: "{{ mysql_app_user }}"
+db_pass: "{{ mysql_app_pass }}"
+
+#composer
+app_root_dir: /home/{{ remote_user }}/{{ app_name }}
+
+remote_front_dir: /home/{{ remote_user }}

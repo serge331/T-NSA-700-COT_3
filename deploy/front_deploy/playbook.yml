@@ -1,0 +1,9 @@
+- name: My front playbook
+#  vars_files: 
+#    - roles/front/vars/vars.yml
+  remote_user: "{{ user }}"
+  connection: ssh 
+  hosts: front
+  roles:
+    - role: front
+      message: "J'ai réussi"

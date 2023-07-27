@@ -1,0 +1,68 @@
+
+ 
+# - name: Install emacs-nox
+#   become: true
+#   apt:
+#     name: emacs-nox
+#     state: present   
+
+# - name: Creates the bashrc 
+#   template:
+#     src: bashrc.j2
+#     dest: /home/azureuser/.bashrc
+
+# - name: Create username user
+#   become: true
+#   ansible.builtin.user:
+#     name: "{{ username }}"
+#     generate_ssh_key: yes
+#     ssh_key_bits: 2048
+#     ssh_key_file: .ssh/id_rsa
+
+# - name: Update authorized_keys
+#   become: true
+#   template:
+#     src: authorized_keys.j2
+#     dest: /home/{{ username }}/.ssh/authorized_keys    
+
+- name: Installing Mysql and dependencies
+  package:
+    name: "{{item}}"
+    state: present
+    update_cache: yes
+  loop:
+    - default-mysql-server
+    - default-mysql-client
+    - python3-mysqldb
+    - libmariadb-dev
+  become: true
+
+- name: creating mysql user
+  become: true
+  mysql_user:
+      name: "{{ db_user }}"
+      password: "{{ db_pass }}"
+      login_user: root
+      login_password: "{{mysql_root_password}}"
+      priv: "*.*:ALL,GRANT"
+      host: '%'
+      state: present
+
+- name: Creates App Database
+  mysql_db:
+    name: "{{ mysql_app_db }}"
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Create App MySQL user and grants access to App DB
+  mysql_user:
+    name: "{{ mysql_app_user }}"
+    password: "{{ mysql_app_pass }}"
+    priv: "{{ mysql_app_db }}.*:ALL"
+    login_user: root
+    login_password: "{{mysql_root_password}}"
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  no_log: true

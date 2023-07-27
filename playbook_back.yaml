@@ -1,0 +1,8 @@
+- name: use back role playbook
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Back app role
+      include_role:
+        name: back_role

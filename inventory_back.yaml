@@ -1,0 +1,4 @@
+virtualmachines:
+    hosts:
+        back_vm:
+            ansible_host: 20.122.107.7

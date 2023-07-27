@@ -1,0 +1,9 @@
+---
+- name: Use db role playbook
+  hosts: 192.168.64
+  remote_user: nimrod
+
+  tasks:
+    - name: Db app role
+      include_role:
+        name: bdd_role

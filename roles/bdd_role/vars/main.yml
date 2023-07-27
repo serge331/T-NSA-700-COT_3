@@ -1,0 +1,15 @@
+---
+# vars file for mesroles
+mysql_app_user: mysql
+mysql_app_pass: mysql
+remote_user: nimrod
+mysql_root_password: "rootpass"
+mysql_app_db: mydb
+app_name: back
+app_debug: true
+app_url: http://localhost
+db_host: localhost
+db_port: 3306
+db_database: "{{ mysql_app_db }}"
+db_user: "{{ mysql_app_user }}"
+db_pass: "{{ mysql_app_pass }}"

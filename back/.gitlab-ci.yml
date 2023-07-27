@@ -1,0 +1,76 @@
+# définition des étapes du pipeline
+stages:
+  - build
+  - test
+  - deploy
+
+# configuration par défaut de l'image Docker
+default:
+  image: php:7
+
+# définition du service MySQL
+services:
+  - mysql:latest
+
+# définition des variables d'environnement
+variables:
+  MYSQL_DATABASE: devops
+  MYSQL_ROOT_PASSWORD: mysqlpwd
+  ANSIBLE_HOST_KEY_CHECKING: "false"
+
+# installation des dépendances requises avant l'exécution du script principal
+before_script:
+  - apt-get update -qq
+  - apt-get install -yqq sshpass python3-pip
+  - apt-get install git -yqq
+  - pip install setuptools
+  - cp backend/.env.example backend/.env
+  - cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini
+  - docker-php-ext-install pdo_mysql
+  - pear config-set php_ini /usr/local/etc/php/php.ini
+  - pecl install xdebug-3.1.5
+  - cd backend
+  - curl -sS https://getcomposer.org/installer | php
+  - mv composer.phar /usr/local/bin/composer
+  - php /usr/local/bin/composer update -qn --no-ansi --prefer-dist
+
+# définition de la cache pour le dossier vendor
+cache:
+  paths:
+    - $CI_PROJECT_DIR/backend/vendor/
+
+# étape de build pour créer l'application
+build:
+  stage: build
+  script:
+    - composer update
+    - php artisan config:cache
+    - php artisan migrate
+  artifacts:
+    paths:
+      - backend/vendor/
+
+# étape de test pour exécuter les tests unitaires
+test:
+  stage: test
+  script:
+    - php $CI_PROJECT_DIR/backend/vendor/bin/phpunit
+
+# étape de déploiement manuelle
+deploy:
+  stage: deploy
+  before_script:
+    - "command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )"
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - touch ~/.ssh/id_rsa
+    - cp -r "$SSH_PRIVATE_KEY" ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host *\nStrictHostKeyChecking no\n" > ~/.ssh/config
+    - eval $(ssh-agent -s)
+    - ssh-add ~/.ssh/id_rsa
+  script:
+    - apt install -y ansible
+    - ansible-playbook playbook_bdd.yaml --user steph -i inventory_bdd.yaml
+    - ansible-playbook playbook_back.yaml --user steph -i inventory_back.yaml
+  when: manual
